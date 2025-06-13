@@ -9,11 +9,17 @@ const eventRoutes = require("./routes/eventRoutes")
 const app = express()
 const PORT = process.env.PORT || 3001 // ✅ Changé de 5000 à 3001 pour correspondre à votre frontend
 
-// Middleware
+// Middleware CORS amélioré
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://127.0.0.1:3000"], // ✅ Spécifié pour React
-    credentials: true, // ✅ Ajouté pour les cookies/auth
+    origin: [
+      "http://localhost:3000",
+      "http://127.0.0.1:3000",
+      "https://votre-frontend-vercel.vercel.app", // Ajoutez votre URL frontend si vous en avez une
+    ],
+    credentials: true,
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   }),
 )
 app.use(express.json())
