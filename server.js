@@ -1,20 +1,4 @@
-// Middleware CORS simple - Ajoutez AVANT vos routes
-app.use((req, res, next) => {
-  res.header('Access-Control-Allow-Origin', 'http://localhost:3000');
-  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.header('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  res.header('Access-Control-Allow-Credentials', 'true');
-  
-  // Gérer les requêtes OPTIONS (preflight)
-  if (req.method === 'OPTIONS') {
-    res.sendStatus(200);
-  } else {
-    next();
-  }
-});
-
 // server.js - Version améliorée basée sur votre code existant
-
 const express = require("express")
 const cors = require("cors")
 require("dotenv").config() // ✅ Ajouté pour lire le .env
