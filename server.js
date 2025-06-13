@@ -24,6 +24,19 @@ app.use((req, res, next) => {
   next()
 })
 
+// Route racine
+app.get("/", (req, res) => {
+  res.json({
+    message: "🚀 API OMAC Torcy opérationnelle !",
+    endpoints: {
+      health: "/api/health",
+      test: "/test",
+      auth: "/api/auth/*",
+      events: "/api/events/*",
+    },
+  })
+})
+
 // Routes
 app.use("/api/auth", authRoutes)
 app.use("/api/events", eventRoutes)
@@ -36,37 +49,22 @@ app.get("/api/status", (req, res) => {
 // ✅ Ajouté : Route health que votre React attend
 app.get("/api/health", (req, res) => {
   res.json({
+    success: true,
     message: "API OMAC Torcy fonctionnelle!",
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || "development",
   })
 })
 
 // ✅ NOUVELLES ROUTES DE TEST - Ajoutées directement ici
 app.get("/api/test-env", (req, res) => {
-  try {
-    const requiredEnvVars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME", "JWT_SECRET"]
-    const envStatus = {}
-    let allPresent = true
+  const vars = ["DB_HOST", "DB_USER", "DB_PASSWORD", "DB_NAME"]
+  const status = {}
 
-    requiredEnvVars.forEach((varName) => {
-      const value = process.env[varName]
-      envStatus[varName] = {
-        present: !!value,
-        length: value ? value.length : 0,
-        preview: value ? `${value.substring(0, 3)}***` : "❌ NON DÉFINI",
-      }
-      if (!value) allPresent = false
-    })
+  vars.forEach((v) => {
+    status[v] = !!process.env[v]
+  })
 
-    res.json({
-      success: allPresent,
-      message: allPresent ? "✅ Toutes les variables OK" : "❌ Variables manquantes",
-      variables: envStatus,
-    })
-  } catch (error) {
-    res.status(500).json({ success: false, message: `❌ Erreur: ${error.message}` })
-  }
+  res.json({ variables: status })
 })
 
 app.get("/api/test-db", async (req, res) => {
@@ -265,6 +263,10 @@ app.use((error, req, res, next) => {
   })
 })
 
+app.get("/", (req, res) => {
+  res.json({ message: "API OMAC fonctionne!" })
+})
+
 app.listen(PORT, () => {
   console.log(`🚀 Serveur OMAC démarré sur http://localhost:${PORT}`)
   console.log(`📊 Environnement: ${process.env.NODE_ENV || "development"}`)
@@ -272,6 +274,7 @@ app.listen(PORT, () => {
   console.log(`💚 API Health: http://localhost:${PORT}/api/health`)
   console.log(`🗄️  Test BDD: http://localhost:${PORT}/api/test-db`)
   console.log(`🧪 Page de test: http://localhost:${PORT}/test`)
+  console.log(`Serveur démarré sur port ${PORT}`)
 })
 
 module.exports = app
