@@ -1,101 +1,113 @@
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('../config/db');
+const bcrypt = require("bcryptjs")
+const jwt = require("jsonwebtoken")
+const db = require("../config/db")
 
-const JWT_SECRET = process.env.JWT_SECRET;
+const JWT_SECRET = process.env.JWT_SECRET || "votre-secret-jwt"
 
 exports.login = async (req, res) => {
-  const { username, mot_de_passe } = req.body;
-  
   try {
-    const admins = await db.query('SELECT * FROM administrateurs WHERE username = ?', [username]);
-    
+    const { username, mot_de_passe } = req.body
+
+    console.log("🔄 Tentative de connexion:", username)
+
+    if (!username || !mot_de_passe) {
+      return res.status(400).json({
+        message: "Nom d'utilisateur et mot de passe requis",
+      })
+    }
+
+    // Rechercher l'administrateur
+    const admins = await db.query("SELECT * FROM administrateurs WHERE username = ?", [username])
+
     if (admins.length === 0) {
-      return res.status(401).json({ message: 'Identifiants invalides' });
+      console.log("❌ Utilisateur non trouvé:", username)
+      return res.status(401).json({
+        message: "Identifiants invalides",
+      })
     }
-    
-    const admin = admins[0];
-    
-    if (admin.mot_de_passe === 'mot_de_passe_temporaire') {
-      return res.status(200).json({ 
-        message: 'Veuillez changer votre mot de passe',
-        requirePasswordChange: true,
-        token: jwt.sign({ id: admin.id }, JWT_SECRET, { expiresIn: '1h' })
-      });
+
+    const admin = admins[0]
+
+    // Vérifier le mot de passe
+    const isValidPassword = await bcrypt.compare(mot_de_passe, admin.mot_de_passe)
+
+    if (!isValidPassword) {
+      console.log("❌ Mot de passe incorrect pour:", username)
+      return res.status(401).json({
+        message: "Identifiants invalides",
+      })
     }
-    
-    const isPasswordValid = (mot_de_passe === admin.mot_de_passe); 
-    
-    if (!isPasswordValid) {
-      return res.status(401).json({ message: 'Identifiants invalides' });
-    }
-    
-    const token = jwt.sign({ id: admin.id }, JWT_SECRET, { expiresIn: '8h' });
-    
-    res.status(200).json({
-      message: 'Connexion réussie',
+
+    // Créer le token JWT
+    const token = jwt.sign(
+      {
+        id: admin.id,
+        username: admin.username,
+      },
+      JWT_SECRET,
+      { expiresIn: "24h" },
+    )
+
+    console.log("✅ Connexion réussie pour:", username)
+
+    res.json({
+      message: "Connexion réussie",
       token,
       admin: {
         id: admin.id,
         username: admin.username,
-        email: admin.email
-      }
-    });
-  } 
-  catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erreur serveur' });
-  }
-};
-
-exports.changePassword = async (req, res) => {
-  const { mot_de_passe_actuel, nouveau_mot_de_passe } = req.body;
-  const adminId = req.admin.id; 
-  
-  try {
-    const admins = await db.query('SELECT * FROM administrateurs WHERE id = ?', [adminId]);
-    
-    if (admins.length === 0) {
-      return res.status(404).json({ message: 'Administrateur non trouvé' });
-    }
-    
-    const admin = admins[0];
-    
-    if (admin.mot_de_passe !== 'mot_de_passe_temporaire') {
-      const isPasswordValid = await bcrypt.compare(mot_de_passe_actuel, admin.mot_de_passe);
-      
-      if (!isPasswordValid) {
-        return res.status(401).json({ message: 'Mot de passe actuel incorrect' });
-      }
-    }
-    
-    const hashedPassword = await bcrypt.hash(nouveau_mot_de_passe, 10);
-    
-    await db.query('UPDATE administrateurs SET mot_de_passe = ? WHERE id = ?', [hashedPassword, adminId]);
-    
-    res.status(200).json({ message: 'Mot de passe modifié avec succès' });
+        email: admin.email,
+      },
+    })
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error("❌ Erreur lors de la connexion:", error)
+    res.status(500).json({
+      message: "Erreur serveur lors de la connexion",
+    })
   }
-};
+}
 
 exports.logout = async (req, res) => {
   try {
-    const token = req.headers.authorization?.split(' ')[1];
-    if (!token) {
-      return res.status(400).json({ message: 'Token non fourni' });
+    const token = req.headers.authorization?.split(" ")[1]
+
+    if (token) {
+      // Ajouter le token à la blacklist
+      await db.query("INSERT INTO tokens_blacklist (token, created_at) VALUES (?, NOW())", [token])
     }
-    
-    const decoded = jwt.decode(token);
-    
-    const expirationDate = new Date(decoded.exp * 1000);
-    
-    await db.query('INSERT INTO tokens_blacklist (token, expiration) VALUES (?, ?)', [token, expirationDate]);
-    
-    res.status(200).json({ message: 'Déconnexion réussie' });
+
+    res.json({ message: "Déconnexion réussie" })
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: 'Erreur serveur' });
+    console.error("Erreur lors de la déconnexion:", error)
+    res.status(500).json({ message: "Erreur lors de la déconnexion" })
   }
-};
+}
+
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body
+    const adminId = req.admin.id
+
+    // Vérifier l'ancien mot de passe
+    const admins = await db.query("SELECT mot_de_passe FROM administrateurs WHERE id = ?", [adminId])
+
+    const isValidPassword = await bcrypt.compare(currentPassword, admins[0].mot_de_passe)
+
+    if (!isValidPassword) {
+      return res.status(400).json({
+        message: "Mot de passe actuel incorrect",
+      })
+    }
+
+    // Hasher le nouveau mot de passe
+    const hashedPassword = await bcrypt.hash(newPassword, 10)
+
+    // Mettre à jour le mot de passe
+    await db.query("UPDATE administrateurs SET mot_de_passe = ? WHERE id = ?", [hashedPassword, adminId])
+
+    res.json({ message: "Mot de passe modifié avec succès" })
+  } catch (error) {
+    console.error("Erreur changement mot de passe:", error)
+    res.status(500).json({ message: "Erreur lors du changement de mot de passe" })
+  }
+}
