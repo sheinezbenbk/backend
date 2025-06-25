@@ -2,6 +2,15 @@ const bcrypt = require("bcryptjs")
 const jwt = require("jsonwebtoken")
 const db = require("../config/db")
 
+
+async function hashPassword() {
+  const plainPassword = "omac77200";
+  const hashedPassword = await bcrypt.hash(plainPassword, 10);
+  console.log("Mot de passe hashé:", hashedPassword);
+}
+
+hashPassword();
+
 const JWT_SECRET = process.env.JWT_SECRET || "votre-secret-jwt"
 
 exports.login = async (req, res) => {
