@@ -36,7 +36,7 @@ app.get("/", (req, res) => {
     message: "🚀 API OMAC Torcy opérationnelle !",
     endpoints: {
       health: "/api/health",
-      auth: "/api/auth/*",
+      auth: "/api/admin/*", // ✅ CORRIGÉ
       events: "/api/events/*",
     },
   })
@@ -51,8 +51,8 @@ app.get("/api/health", (req, res) => {
   })
 })
 
-// Vos routes existantes
-app.use("/api/auth", authRoutes)
+// ✅ SOLUTION : Changement de route
+app.use("/api/admin", authRoutes) // ✅ CORRIGÉ : /auth → /admin
 app.use("/api/events", eventRoutes)
 
 // Route pour vérifier si l'API fonctionne
