@@ -10,7 +10,7 @@ const PORT = process.env.PORT || 3001
 
 // ✅ MODIFICATION : Configuration CORS améliorée
 app.use(
-  cors({
+  cors({  
     origin: [
       "http://localhost:3000", // Votre React en local
       "http://127.0.0.1:3000", // Alternative localhost
